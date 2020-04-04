@@ -3,7 +3,6 @@ import os
 import sys
 from bs4 import BeautifulSoup
 from selenium import webdriver
-import urllib3
 from sys import argv
 from docx import Document
 from docx.shared import Inches
@@ -14,10 +13,11 @@ from individual_views.baahrakhari import barakhari
 
 class DataMining:
 	fail = 'No Connection, Please Check Your Internet Connection!'
-	def __init__(self,siteurl):
+	def __init__(self,siteurl,newscount):
 		try:
 			self.page = requests.get(siteurl)
 			self.sitehome = siteurl
+			self.numberofnews = newscount
 		except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.RequestException, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
 			self.page = 'noconnection'
 			print self.noConn()
@@ -57,9 +57,7 @@ class DataMining:
 				if(self.sitehome == 'https://onlinekhabar.com/'):
 					nav = self.navItem(soup,'div','menu-primary-menu-container')
 				elif(self.sitehome == 'https://gorkhapatraonline.com/'):
-					nav = self.navItem(soup,'ul','navbar-nav')
-				# print self.splitUrl(self.sitehome)
-				
+					nav = self.navItem(soup,'ul','navbar-nav')				
 			else:
 				return self.noConn()
 		return None
@@ -73,9 +71,14 @@ class DataMining:
 
 		return None 
 
+	def readallnews(self,getMainCat):
+		newsoupsingle = BeautifulSoup(self.otherPage(self.sitehome + 'all%s' %getMainCat).content, 'html.parser')
+		self.category(newsoupsingle,getMainCat,'')
+		return None
+
 	def paginationcall(self,soup,MainCategory,SubCategory,count):
 		for page in soup:
-			if count >= 501:
+			if count > int(self.numberofnews):
 				break
 			elif page.has_attr('href'):
 				pagesinglesoup = BeautifulSoup(self.otherPage(page['href']).content, 'html.parser')
@@ -84,19 +87,22 @@ class DataMining:
 
 	def moreNews(self,morecontent,MainCategory,SubCategory,counter):
 		single_page = []
+		outofcurrentpage = 0;
 		more_news = morecontent.find_all('a',{'class':'title__regular'})
 		pagination = morecontent.find_all('a',{'class':'next page-numbers'})
 		if more_news is not None:
 			count = counter
 			for single in more_news:
-				if count >= 501:
+				if count > int(self.numberofnews):
+					outofcurrentpage = 1
 					break
 				elif single.has_attr('href'):
 					soupsingle = BeautifulSoup(self.otherPage(single['href']).content, 'html.parser')
 					self.saveindividual(soupsingle,MainCategory,SubCategory,count)
 				count = count + 1
-		# if pagination is not None:
-		# 	self.paginationcall(pagination,MainCategory,SubCategory,count)
+		if outofcurrentpage == 0:
+			if pagination is not None:
+				self.paginationcall(pagination,MainCategory,SubCategory,count)
 		return None
 
 	def saveindividual(self,allcont,MainCategory,SubCategory,counter):
@@ -108,14 +114,14 @@ class DataMining:
 			elif(self.sitehome == 'https://gorkhapatraonline.com/'):
 				getsoupsiglehead = self.checknotnone(allcont,'h1', 'post-title')
 				getsoupsigle = self.checknotnone(allcont,'div', 'newstext')
-
-			singlecontent = getsoupsigle.select('p')
-			h = getsoupsiglehead.get_text()
-			content = document.add_heading(getsoupsiglehead.get_text(),2)
-			for cont in singlecontent:
-				conten1 = document.add_paragraph(cont.get_text())
-			path = os.getcwd()
-			sn = self.getportalname(self.sitehome)
+			if getsoupsigle is not None:
+				singlecontent = getsoupsigle.select('p')
+				h = getsoupsiglehead.get_text()
+				content = document.add_heading(getsoupsiglehead.get_text(),2)
+				for cont in singlecontent:
+					conten1 = document.add_paragraph(cont.get_text())
+				path = os.getcwd()
+				sn = self.getportalname(self.sitehome)
 
 			if not os.path.exists('News'):
 				os.mkdir('News')
@@ -174,7 +180,7 @@ class DataMining:
 
 		return None
 
-	def category(self,getsoup,MainCatName):
+	def category(self,getsoup,MainCatName,counter):
 		if(self.sitehome == 'https://onlinekhabar.com/'):
 			if(MainCatName == 'news'):
 				pass
@@ -191,33 +197,31 @@ class DataMining:
 			if getsoup is not None:
 				linklist =[]
 				selectCat = getsoup.find('div',{'class':'sports-groups'})
-				if selectCat is not None:
+				nextpagelk = getsoup.find('a',{'rel':'next'})
+	
+				if selectCat and nextpagelk is not None:
+					print MainCatName
 					getlink = selectCat.find_all('a')
-					count = 1
+					outofcurrentpage = 0
+					if counter != '':
+						count = counter
+					else:
+						count = 1
 					for indlk in getlink:
-						if indlk.has_attr('href'):
-							catsoup = BeautifulSoup(self.otherPage(indlk['href']).content, 'html.parser')
-							self.saveindividual(catsoup,MainCatName,'',count)
+						if count > int(self.numberofnews):
+							outofcurrentpage = 1
+							break
+						else:
+							if indlk.has_attr('href'):
+								catsoup = BeautifulSoup(self.otherPage(indlk['href']).content, 'html.parser')
+								self.saveindividual(catsoup,MainCatName,'',count)
 						count = count + 1
+					if outofcurrentpage == 0:
+						newsoup = BeautifulSoup(self.otherPage(nextpagelk['href']).content, 'html.parser')
+						self.category(newsoup,MainCatName,count)
+				elif (selectCat and nextpagelk) is None and MainCatName != 'province' and MainCatName != 'nayanepal':
+					self.readallnews(MainCatName)
 
-			# print getlink
-			# sys.exit()
-			# if selectCat is not None:
-			# 	for indlk in selectCat:
-			# 		selectLink = indlk.find_all('a')
-			# 		linklist.append(selectLink)
-			# print linklist
-			# for lk in linklist:
-			# 	self.moreNews(catsoup,MainCatName,self.splitUrl(str(individualcat['href'])),1)
-					# print selectLink['href']
-					# if selectLink.has_attr('href'):
-					# 	newpagesoup = BeautifulSoup(self.otherPage(srt(selectLink['href'])).content, 'html.parser')
-					# 	self.moreNews(newpagesoup,MainCatName,'',1)
-			# selectCat = getsoup.find_all('div',{'class':'page-news-list'})
-			# for individual_news in selectCat:
-			# 	print individual_news
-			# print getsoup
-				
 		return None
 
 	def navItem(self,allcont,htmele,eleclass):
@@ -232,8 +236,12 @@ class DataMining:
 			else:
 				continue
 		for nav,cattitle in zip(nav_link,cat):
-			newsoup = BeautifulSoup(self.otherPage(nav).content, 'html.parser')
-			self.category(newsoup,cattitle);
+			if(self.sitehome == 'https://onlinekhabar.com/'):
+				newsoup = BeautifulSoup(self.otherPage(nav).content, 'html.parser')
+				self.category(newsoup,cattitle,'');
+			elif (self.sitehome == 'https://gorkhapatraonline.com/'):
+				newsoup = BeautifulSoup(self.otherPage(nav).content, 'html.parser')
+				self.category(newsoup,cattitle,'')
 		return None
 
 
