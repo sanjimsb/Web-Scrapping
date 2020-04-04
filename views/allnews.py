@@ -1,6 +1,6 @@
 
 class newslink:
 	def newsportal(self):
-		newsportal_lk = ['https://baahrakhari.com/','http://onlinekhabar.com/']
+		newsportal_lk = ['https://gorkhapatraonline.com/','https://onlinekhabar.com/']
 
 		return newsportal_lk
