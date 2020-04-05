@@ -18,7 +18,7 @@ class DataMining:
 
 	def __init__(self,siteurl,newscount):
 		try:
-			self.page = requests.get(siteurl,verify=True)
+			self.page = requests.get(siteurl)
 			self.sitehome = siteurl
 			self.numberofnews = newscount
 		except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.RequestException, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
@@ -32,7 +32,7 @@ class DataMining:
 
 	def otherPage(self,site_new_url):
 		try:
-			self.othp = requests.get(site_new_url,verify=True)
+			self.othp = requests.get(site_new_url)
 		except( requests.exceptions.TooManyRedirects):
 			time.sleep(5)
 		return self.othp
@@ -63,7 +63,9 @@ class DataMining:
 				if(self.sitehome == 'https://onlinekhabar.com/'):
 					nav = self.navItem(soup,'div','menu-primary-menu-container')
 				elif(self.sitehome == 'https://gorkhapatraonline.com/'):
-					nav = self.navItem(soup,'ul','navbar-nav')				
+					nav = self.navItem(soup,'ul','navbar-nav')	
+				elif(self.sitehome == 'https://imagekhabar.com/'):
+					nav = self.navItem(soup,'div','ne-main-menu')				
 			else:
 				return self.noConn()
 		return None
@@ -125,6 +127,9 @@ class DataMining:
 			elif(self.sitehome == 'https://gorkhapatraonline.com/'):
 				getsoupsiglehead = self.checknotnone(allcont,'h1', 'post-title')
 				getsoupsigle = self.checknotnone(allcont,'div', 'newstext')
+			elif(self.sitehome == 'https://imagekhabar.com/'):
+				getsoupsiglehead = self.checknotnone(allcont,'h1', 'title-semibold-dark size-c30')
+				getsoupsigle = self.checknotnone(allcont,'div', 'news-details-layout1')
 			sn = self.getportalname(self.sitehome)
 			if getsoupsigle is not None:
 				singlecontent = getsoupsigle.select('p')
@@ -253,6 +258,43 @@ class DataMining:
 				elif (selectCat and nextpagelk) is None and MainCatName != 'nayanepal' and pl != 1:
 					self.readallnews(MainCatName)
 
+		elif (self.sitehome == 'https://imagekhabar.com/'):
+			if getsoup is not None:
+				linklist =[]
+				selectCat = getsoup.find('div',{'class':'col-lg-8 col-md-12'})
+				nextpagelk = getsoup.find('a',{'rel':'next'})
+				print nextpagelk['href']
+				if selectCat and nextpagelk is not None:
+					getlink = selectCat.find_all('a',{'class':'img-opacity-hover img-overlay-70'})
+					print getlink
+					outofcurrentpage = 0
+					if counter != '':
+						count = counter
+					else:
+						count = 1
+					for indlk in getlink:
+						if count > int(self.numberofnews):
+							outofcurrentpage = 1
+							break
+						else:
+							if indlk.has_attr('href'):
+								newlink = self.homeUrl(self.sitehome) + indlk['href']
+								verifiedlk = newlink.replace('www.','')
+								print newlink
+								catsoup = BeautifulSoup(self.otherPage(verifiedlk).content, 'html.parser')
+								self.saveindividual(catsoup,MainCatName,'',count)
+						count = count + 1
+
+					if outofcurrentpage == 0:
+						print nextpagelk['href']
+						newsoup = BeautifulSoup(self.otherPage(str(nextpagelk['href'])).content, 'html.parser')
+						print newsoup
+						if(SubCategory != ''):
+							self.category(newsoup,MainCatName,SubCategory,count)
+						else:
+							self.category(newsoup,MainCatName,'',count)
+					
+
 		return None
 
 	def navItem(self,allcont,htmele,eleclass):
@@ -273,6 +315,10 @@ class DataMining:
 			elif (self.sitehome == 'https://gorkhapatraonline.com/'):
 				newsoup = BeautifulSoup(self.otherPage(nav).content, 'html.parser')
 				self.category(newsoup,cattitle,'','')
+			elif (self.sitehome == 'https://imagekhabar.com/'):
+				if(nav != 'http://archive.imagekhabar.com/'):
+					newsoup = BeautifulSoup(self.otherPage(self.homeUrl(self.sitehome) + nav).content, 'html.parser')
+					self.category(newsoup,cattitle,'','')
 		return None
 
 
