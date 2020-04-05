@@ -1,6 +1,7 @@
 import requests
 import os
 import sys
+import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from sys import argv
@@ -13,9 +14,11 @@ from individual_views.baahrakhari import barakhari
 
 class DataMining:
 	fail = 'No Connection, Please Check Your Internet Connection!'
+	pl = 0
+
 	def __init__(self,siteurl,newscount):
 		try:
-			self.page = requests.get(siteurl)
+			self.page = requests.get(siteurl,verify=True)
 			self.sitehome = siteurl
 			self.numberofnews = newscount
 		except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.RequestException, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
@@ -28,7 +31,10 @@ class DataMining:
 		return self.fail
 
 	def otherPage(self,site_new_url):
-		self.othp = requests.get(site_new_url)
+		try:
+			self.othp = requests.get(site_new_url,verify=True)
+		except( requests.exceptions.TooManyRedirects):
+			time.sleep(5)
 		return self.othp
 
 	def splitUrl(self,geturl):
@@ -73,8 +79,13 @@ class DataMining:
 
 	def readallnews(self,getMainCat):
 		newsoupsingle = BeautifulSoup(self.otherPage(self.sitehome + 'all%s' %getMainCat).content, 'html.parser')
-		self.category(newsoupsingle,getMainCat,'')
+		self.category(newsoupsingle,getMainCat,'','')
 		return None
+
+	def preventloop(self,Val):
+		global pl
+		pl = Val
+		return self.pl
 
 	def paginationcall(self,soup,MainCategory,SubCategory,count):
 		for page in soup:
@@ -114,6 +125,7 @@ class DataMining:
 			elif(self.sitehome == 'https://gorkhapatraonline.com/'):
 				getsoupsiglehead = self.checknotnone(allcont,'h1', 'post-title')
 				getsoupsigle = self.checknotnone(allcont,'div', 'newstext')
+			sn = self.getportalname(self.sitehome)
 			if getsoupsigle is not None:
 				singlecontent = getsoupsigle.select('p')
 				h = getsoupsiglehead.get_text()
@@ -121,7 +133,6 @@ class DataMining:
 				for cont in singlecontent:
 					conten1 = document.add_paragraph(cont.get_text())
 				path = os.getcwd()
-				sn = self.getportalname(self.sitehome)
 
 			if not os.path.exists('News'):
 				os.mkdir('News')
@@ -133,7 +144,7 @@ class DataMining:
 							if not os.path.exists('News/%s/%s/%s' %(sn,MainCategory, SubCategory)):
 								os.mkdir('News/%s/%s' %(MainCategory, SubCategory))
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
-						else:
+						elif(SubCategory == ''):
 							document.save('News/%s/%s/%s_news_%s.docx' %(sn,MainCategory, MainCategory, counter))
 			else:
 				if not os.path.exists('News/%s' % sn):
@@ -146,7 +157,7 @@ class DataMining:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
 							else:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
-						else:
+						elif(SubCategory == ''):
 							document.save('News/%s/%s/%s_news_%s.docx' %(sn,MainCategory, MainCategory, counter))
 					else:
 						if (SubCategory != ''):
@@ -155,7 +166,7 @@ class DataMining:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
 							else:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
-						else:
+						elif(SubCategory == ''):
 							document.save('News/%s/%s/%s_news_%s.docx' %(sn,MainCategory, MainCategory, counter))
 				else:
 					if not os.path.exists('News/%s/%s' % (sn,MainCategory)):
@@ -166,7 +177,7 @@ class DataMining:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
 							else:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
-						else:
+						elif(SubCategory == ''):
 							document.save('News/%s/%s/%s_news_%s.docx' %(sn,MainCategory, MainCategory, counter))
 					else:
 						if (SubCategory != ''):
@@ -175,12 +186,12 @@ class DataMining:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
 							else:
 								document.save('News/%s/%s/%s/%s_news_%s.docx' %(sn,MainCategory, SubCategory, SubCategory, counter))
-						else:
+						elif(SubCategory == ''):
 							document.save('News/%s/%s/%s_news_%s.docx' %(sn,MainCategory, MainCategory, counter))
 
 		return None
 
-	def category(self,getsoup,MainCatName,counter):
+	def category(self,getsoup,MainCatName,SubCategory,counter):
 		if(self.sitehome == 'https://onlinekhabar.com/'):
 			if(MainCatName == 'news'):
 				pass
@@ -194,11 +205,11 @@ class DataMining:
 						self.moreNews(catsoup,MainCatName,self.splitUrl(str(individualcat['href'])),1)
 
 		elif (self.sitehome == 'https://gorkhapatraonline.com/'):
+			global pl
 			if getsoup is not None:
 				linklist =[]
 				selectCat = getsoup.find('div',{'class':'sports-groups'})
 				nextpagelk = getsoup.find('a',{'rel':'next'})
-	
 				if selectCat and nextpagelk is not None:
 					print MainCatName
 					getlink = selectCat.find_all('a')
@@ -210,16 +221,36 @@ class DataMining:
 					for indlk in getlink:
 						if count > int(self.numberofnews):
 							outofcurrentpage = 1
+							self.preventloop(0)
 							break
 						else:
 							if indlk.has_attr('href'):
-								catsoup = BeautifulSoup(self.otherPage(indlk['href']).content, 'html.parser')
-								self.saveindividual(catsoup,MainCatName,'',count)
+								verifiedlk = indlk['href'].replace('www.','')
+								catsoup = BeautifulSoup(self.otherPage(verifiedlk).content, 'html.parser')
+								if(SubCategory != ''):
+									print SubCategory
+									self.saveindividual(catsoup,MainCatName,SubCategory,count)
+								else:
+									self.saveindividual(catsoup,MainCatName,'',count)
 						count = count + 1
+
 					if outofcurrentpage == 0:
 						newsoup = BeautifulSoup(self.otherPage(nextpagelk['href']).content, 'html.parser')
-						self.category(newsoup,MainCatName,count)
-				elif (selectCat and nextpagelk) is None and MainCatName != 'province' and MainCatName != 'nayanepal':
+						if(SubCategory != ''):
+							self.category(newsoup,MainCatName,SubCategory,count)
+						else:
+							self.category(newsoup,MainCatName,'',count)
+					
+
+				elif pl != 1:
+					if (MainCatName == 'province'):
+						for i in range(1,7):
+							self.preventloop(1)
+							print self.sitehome + MainCatName+'%s' %i
+							newsoupsingle = BeautifulSoup(self.otherPage(self.sitehome + 'Province' + '%s' %i).content, 'html.parser')
+							self.category(newsoupsingle,MainCatName,MainCatName+'%s' %i,'')
+
+				elif (selectCat and nextpagelk) is None and MainCatName != 'nayanepal' and pl != 1:
 					self.readallnews(MainCatName)
 
 		return None
@@ -238,10 +269,10 @@ class DataMining:
 		for nav,cattitle in zip(nav_link,cat):
 			if(self.sitehome == 'https://onlinekhabar.com/'):
 				newsoup = BeautifulSoup(self.otherPage(nav).content, 'html.parser')
-				self.category(newsoup,cattitle,'');
+				self.category(newsoup,cattitle,'','');
 			elif (self.sitehome == 'https://gorkhapatraonline.com/'):
 				newsoup = BeautifulSoup(self.otherPage(nav).content, 'html.parser')
-				self.category(newsoup,cattitle,'')
+				self.category(newsoup,cattitle,'','')
 		return None
 
 
