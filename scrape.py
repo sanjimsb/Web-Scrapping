@@ -202,7 +202,7 @@ class DataMining:
 				pass
 			else:
 				selectCat = getsoup.find_all('a',{'class':'read__all--dot'});
-				print MainCatName
+				# print MainCatName
 				for individualcat in selectCat:
 					if individualcat.has_attr('href'):
 						newUrlcat =  str(self.homeUrl(self.sitehome) + individualcat['href'] )
@@ -216,7 +216,7 @@ class DataMining:
 				selectCat = getsoup.find('div',{'class':'sports-groups'})
 				nextpagelk = getsoup.find('a',{'rel':'next'})
 				if selectCat and nextpagelk is not None:
-					print MainCatName
+					# print MainCatName
 					getlink = selectCat.find_all('a')
 					outofcurrentpage = 0
 					if counter != '':
@@ -233,7 +233,7 @@ class DataMining:
 								verifiedlk = indlk['href'].replace('www.','')
 								catsoup = BeautifulSoup(self.otherPage(verifiedlk).content, 'html.parser')
 								if(SubCategory != ''):
-									print SubCategory
+									# print SubCategory
 									self.saveindividual(catsoup,MainCatName,SubCategory,count)
 								else:
 									self.saveindividual(catsoup,MainCatName,'',count)
@@ -251,7 +251,7 @@ class DataMining:
 					if (MainCatName == 'province'):
 						for i in range(1,7):
 							self.preventloop(1)
-							print self.sitehome + MainCatName+'%s' %i
+							# print self.sitehome + MainCatName+'%s' %i
 							newsoupsingle = BeautifulSoup(self.otherPage(self.sitehome + 'Province' + '%s' %i).content, 'html.parser')
 							self.category(newsoupsingle,MainCatName,MainCatName+'%s' %i,'')
 
@@ -263,10 +263,10 @@ class DataMining:
 				linklist =[]
 				selectCat = getsoup.find('div',{'class':'col-lg-8 col-md-12'})
 				nextpagelk = getsoup.find('a',{'rel':'next'})
-				print nextpagelk['href']
+				# print nextpagelk['href']
 				if selectCat and nextpagelk is not None:
 					getlink = selectCat.find_all('a',{'class':'img-opacity-hover img-overlay-70'})
-					print getlink
+					# print getlink
 					outofcurrentpage = 0
 					if counter != '':
 						count = counter
@@ -280,15 +280,15 @@ class DataMining:
 							if indlk.has_attr('href'):
 								newlink = self.homeUrl(self.sitehome) + indlk['href']
 								verifiedlk = newlink.replace('www.','')
-								print newlink
+								# print newlink
 								catsoup = BeautifulSoup(self.otherPage(verifiedlk).content, 'html.parser')
 								self.saveindividual(catsoup,MainCatName,'',count)
 						count = count + 1
 
 					if outofcurrentpage == 0:
-						print nextpagelk['href']
+						# print nextpagelk['href']
 						newsoup = BeautifulSoup(self.otherPage(str(nextpagelk['href'])).content, 'html.parser')
-						print newsoup
+						# print newsoup
 						if(SubCategory != ''):
 							self.category(newsoup,MainCatName,SubCategory,count)
 						else:
